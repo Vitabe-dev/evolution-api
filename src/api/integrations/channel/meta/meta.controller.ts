@@ -39,6 +39,8 @@ export class MetaController extends ChannelController implements ChannelControll
       data.entry?.forEach(async (entry: any) => {
         const numberId = entry.changes[0].value.metadata.phone_number_id;
 
+        console.log("Number ID: ", numberId);
+
         if (!numberId) {
           this.logger.error('WebhookService -> receiveWebhookMeta -> numberId not found');
           return {
@@ -46,9 +48,13 @@ export class MetaController extends ChannelController implements ChannelControll
           };
         }
 
+        console.log("Number ID 2: ", numberId);
+
         const instance = await this.prismaRepository.instance.findFirst({
           where: { number: numberId },
         });
+
+        console.log("Instance: ", instance);
 
         if (!instance) {
           this.logger.error('WebhookService -> receiveWebhookMeta -> instance not found');
