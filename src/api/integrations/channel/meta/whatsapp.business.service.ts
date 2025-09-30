@@ -80,10 +80,23 @@ export class BusinessStartupService extends ChannelStartupService {
       let urlServer = this.configService.get<WaBusiness>('WA_BUSINESS').URL;
       const version = this.configService.get<WaBusiness>('WA_BUSINESS').VERSION;
       urlServer = `${urlServer}/${version}/${this.number}/${params}`;
+      
+      this.logger.log(`Sending POST request to: ${urlServer}`);
+      this.logger.log(`Using token: ${this.token ? 'Bearer ' + this.token.substring(0, 10) + '...' : 'NO TOKEN'}`);
+      
       const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` };
       const result = await axios.post(urlServer, message, { headers });
+      
+      this.logger.log(`POST request successful`);
       return result.data;
     } catch (e) {
+      this.logger.error(`POST request failed:`, e.response?.data || e.message);
+      
+      if (e.response?.status === 401) {
+        this.logger.error(`Token inválido ou expirado para instância: ${this.instance.name}`);
+        this.logger.error(`Verifique se o token da instância está correto no Meta Business Manager`);
+      }
+      
       return e.response?.data?.error;
     }
   }
@@ -146,12 +159,40 @@ export class BusinessStartupService extends ChannelStartupService {
       let urlServer = this.configService.get<WaBusiness>('WA_BUSINESS').URL;
       const version = this.configService.get<WaBusiness>('WA_BUSINESS').VERSION;
       urlServer = `${urlServer}/${version}/${id}`;
+      
+      this.logger.log(`Downloading media with ID: ${id}`);
+      this.logger.log(`Media URL: ${urlServer}`);
+      this.logger.log(`Using token: ${this.token ? 'Bearer ' + this.token.substring(0, 10) + '...' : 'NO TOKEN'}`);
+      
       const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` };
+      
       let result = await axios.get(urlServer, { headers });
+      this.logger.log(`Media metadata retrieved successfully`);
+      
+      if (!result.data.url) {
+        this.logger.error('No media URL found in response');
+        return null;
+      }
+      
+      this.logger.log(`Downloading media from: ${result.data.url}`);
       result = await axios.get(result.data.url, { headers, responseType: 'arraybuffer' });
+      
+      this.logger.log(`Media downloaded successfully, size: ${result.data.length} bytes`);
       return result.data;
     } catch (e) {
-      this.logger.error(e);
+      this.logger.error(`Failed to download media message:`, e.response?.data || e.message);
+      
+      if (e.response?.status === 401) {
+        this.logger.error(`Token inválido ou expirado para instância: ${this.instance.name}`);
+        this.logger.error(`Verifique se o token da instância está correto no Meta Business Manager`);
+      }
+      
+      if (e.response?.status === 403) {
+        this.logger.error(`Permissões insuficientes para acessar mídia`);
+        this.logger.error(`Verifique se o token tem permissão para acessar mídias`);
+      }
+      
+      return null;
     }
   }
 

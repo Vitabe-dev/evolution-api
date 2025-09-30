@@ -19,22 +19,48 @@ export class MetaController extends ChannelController implements ChannelControll
     
     if (data.object === 'whatsapp_business_account') {
       if (data.entry[0]?.changes[0]?.field === 'message_template_status_update') {
+        const templateId = data.entry[0].changes[0].value.message_template_id;
+        
+        this.logger.log(`Template status update webhook received for templateId: ${templateId}`);
+        this.logger.log(`Template status data: ${JSON.stringify(data.entry[0].changes[0].value, null, 2)}`);
+        
+        // Log all templates in database for debugging
+        const allTemplates = await this.prismaRepository.template.findMany({
+          select: { templateId: true, name: true, webhookUrl: true, instanceId: true }
+        });
+        this.logger.log(`All templates in database: ${JSON.stringify(allTemplates, null, 2)}`);
+        
         const template = await this.prismaRepository.template.findFirst({
-          where: { templateId: `${data.entry[0].changes[0].value.message_template_id}` },
+          where: { templateId: `${templateId}` },
         });
 
         if (!template) {
-          console.log('template not found');
+          this.logger.error(`Template not found for templateId: ${templateId}`);
+          this.logger.error(`Available templates: ${allTemplates.map(t => `${t.name}: ${t.templateId} (webhook: ${t.webhookUrl ? 'YES' : 'NO'})`).join(', ')}`);
           return;
         }
 
+        this.logger.log(`Template found: ${JSON.stringify(template, null, 2)}`);
+        
         const { webhookUrl } = template;
+        
+        if (!webhookUrl) {
+          this.logger.error(`Webhook URL not configured for template: ${template.name} (ID: ${template.templateId})`);
+          return;
+        }
 
-        await axios.post(webhookUrl, data.entry[0].changes[0].value, {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
+        this.logger.log(`Sending webhook to: ${webhookUrl}`);
+        
+        try {
+          await axios.post(webhookUrl, data.entry[0].changes[0].value, {
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+          this.logger.log(`Webhook sent successfully to: ${webhookUrl}`);
+        } catch (error) {
+          this.logger.error(`Failed to send webhook to ${webhookUrl}: ${error.response?.data || error.message}`);
+        }
         return;
       }
 

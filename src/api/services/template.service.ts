@@ -97,8 +97,8 @@ export class TemplateService {
         return result.data;
       }
     } catch (e) {
-      this.logger.error(e.response.data);
-      return e.response.data.error;
+      this.logger.error(e.response?.data || e);
+      return e.response?.data?.error || e;
     }
   }
 }
