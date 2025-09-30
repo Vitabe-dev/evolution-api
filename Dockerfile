@@ -9,9 +9,12 @@ LABEL contact="contato@atendai.com"
 
 WORKDIR /evolution
 
-COPY ./package.json ./tsconfig.json ./
+COPY ./package.json ./tsconfig.json ./.npmrc ./
 
-RUN npm install --legacy-peer-deps
+# Configure npm to use legacy peer deps
+RUN npm config set legacy-peer-deps true
+
+RUN npm install --legacy-peer-deps --force
 
 COPY ./src ./src
 COPY ./public ./public

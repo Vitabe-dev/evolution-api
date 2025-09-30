@@ -119,7 +119,7 @@ log "npm: $(npm -v)"
 # Instala dependências do projeto
 log "Instalando dependências do projeto..."
 rm -rf node_modules
-npm install
+npm install --legacy-peer-deps
 
 # Deploy do banco de dados
 log "Deploy do banco de dados..."
