@@ -90,7 +90,7 @@ export class BusinessStartupService extends ChannelStartupService {
       this.logger.log(`POST request successful`);
       return result.data;
     } catch (e) {
-      this.logger.error(`POST request failed:`, e.response?.data || e.message);
+      this.logger.error(`POST request failed: ${e.response?.data || e.message}`);
       
       if (e.response?.status === 401) {
         this.logger.error(`Token inválido ou expirado para instância: ${this.instance.name}`);
@@ -180,7 +180,7 @@ export class BusinessStartupService extends ChannelStartupService {
       this.logger.log(`Media downloaded successfully, size: ${result.data.length} bytes`);
       return result.data;
     } catch (e) {
-      this.logger.error(`Failed to download media message:`, e.response?.data || e.message);
+      this.logger.error(`Failed to download media message: ${e.response?.data || e.message}`);
       
       if (e.response?.status === 401) {
         this.logger.error(`Token inválido ou expirado para instância: ${this.instance.name}`);
