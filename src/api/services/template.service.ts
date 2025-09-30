@@ -21,12 +21,13 @@ export class TemplateService {
 
   public async find(instance: InstanceDto) {
     const getInstance = await this.waMonitor.waInstances[instance.instanceName].instance;
-
+    this.logger.log(`getInstance: ${JSON.stringify(getInstance, null, 2)}`);
     if (!getInstance) {
       throw new Error('Instance not found');
     }
 
     this.businessId = getInstance.businessId;
+    this.logger.log(`businessId: ${this.businessId}`);
     this.token = getInstance.token;
 
     const response = await this.requestTemplate({}, 'GET');
@@ -88,9 +89,11 @@ export class TemplateService {
       const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` };
       if (method === 'GET') {
         const result = await axios.get(urlServer, { headers });
+        this.logger.log(`result: ${JSON.stringify(result, null, 2)}`);
         return result.data;
       } else if (method === 'POST') {
         const result = await axios.post(urlServer, data, { headers });
+        this.logger.log(`result: ${JSON.stringify(result, null, 2)}`);
         return result.data;
       }
     } catch (e) {

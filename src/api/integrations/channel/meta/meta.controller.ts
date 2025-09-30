@@ -54,15 +54,23 @@ export class MetaController extends ChannelController implements ChannelControll
 
         // Log all instances in database for debugging
         const allInstances = await this.prismaRepository.instance.findMany({
-          select: { name: true, number: true, integration: true }
+          select: { name: true, number: true, integration: true, updatedAt: true }
         });
         this.logger.log(`All instances in database: ${JSON.stringify(allInstances, null, 2)}`);
 
+        // Try multiple search approaches
         const instance = await this.prismaRepository.instance.findFirst({
           where: { number: numberId },
         });
 
-        this.logger.log(`Found instance: ${JSON.stringify(instance, null, 2)}`);
+        // Also try searching by name
+        const instanceByName = await this.prismaRepository.instance.findFirst({
+          where: { name: 'TransacionalRenovabe' },
+        });
+
+        this.logger.log(`Found instance by number: ${JSON.stringify(instance, null, 2)}`);
+        this.logger.log(`Found instance by name: ${JSON.stringify(instanceByName, null, 2)}`);
+        this.logger.log(`Searching for numberId: ${numberId} (type: ${typeof numberId})`);
 
         if (!instance) {
           this.logger.error(`WebhookService -> receiveWebhookMeta -> instance not found for numberId: ${numberId}`);
@@ -73,12 +81,25 @@ export class MetaController extends ChannelController implements ChannelControll
         }
 
         // Check if instance exists in memory
+        this.logger.log(`Available instances in memory: ${Object.keys(this.waMonitor.waInstances).join(', ')}`);
+        
         if (!this.waMonitor.waInstances[instance.name]) {
           this.logger.error(`Instance ${instance.name} not found in waMonitor.waInstances`);
-          this.logger.log(`Available instances in memory: ${Object.keys(this.waMonitor.waInstances).join(', ')}`);
-          return {
-            status: 'success',
-          };
+          this.logger.log(`Trying to reload instance from database...`);
+          
+          // Try to reload the instance
+          try {
+            await this.waMonitor.loadInstance();
+            this.logger.log(`Instance reloaded. Available instances: ${Object.keys(this.waMonitor.waInstances).join(', ')}`);
+          } catch (error) {
+            this.logger.error(`Failed to reload instance: ${error}`);
+          }
+          
+          if (!this.waMonitor.waInstances[instance.name]) {
+            return {
+              status: 'success',
+            };
+          }
         }
 
         await this.waMonitor.waInstances[instance.name].connectToWhatsapp(data);
