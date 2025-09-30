@@ -15,6 +15,8 @@ export class MetaController extends ChannelController implements ChannelControll
   integrationEnabled: boolean;
 
   public async receiveWebhook(data: any) {
+    this.logger.log(`Webhook received: ${JSON.stringify(data, null, 2)}`);
+    
     if (data.object === 'whatsapp_business_account') {
       if (data.entry[0]?.changes[0]?.field === 'message_template_status_update') {
         const template = await this.prismaRepository.template.findFirst({
@@ -39,7 +41,9 @@ export class MetaController extends ChannelController implements ChannelControll
       data.entry?.forEach(async (entry: any) => {
         const numberId = entry.changes[0].value.metadata.phone_number_id;
 
-        console.log("Number ID: ", numberId);
+        this.logger.log(`Processing webhook entry: ${JSON.stringify(entry, null, 2)}`);
+        this.logger.log(`Number ID from webhook: ${numberId}`);
+        this.logger.log(`Number ID type: ${typeof numberId}`);
 
         if (!numberId) {
           this.logger.error('WebhookService -> receiveWebhookMeta -> numberId not found');
@@ -48,16 +52,30 @@ export class MetaController extends ChannelController implements ChannelControll
           };
         }
 
-        console.log("Number ID 2: ", numberId);
+        // Log all instances in database for debugging
+        const allInstances = await this.prismaRepository.instance.findMany({
+          select: { name: true, number: true, integration: true }
+        });
+        this.logger.log(`All instances in database: ${JSON.stringify(allInstances, null, 2)}`);
 
         const instance = await this.prismaRepository.instance.findFirst({
           where: { number: numberId },
         });
 
-        console.log("Instance: ", instance);
+        this.logger.log(`Found instance: ${JSON.stringify(instance, null, 2)}`);
 
         if (!instance) {
-          this.logger.error('WebhookService -> receiveWebhookMeta -> instance not found');
+          this.logger.error(`WebhookService -> receiveWebhookMeta -> instance not found for numberId: ${numberId}`);
+          this.logger.error(`Available instances: ${allInstances.map(i => `${i.name}: ${i.number} (${i.integration})`).join(', ')}`);
+          return {
+            status: 'success',
+          };
+        }
+
+        // Check if instance exists in memory
+        if (!this.waMonitor.waInstances[instance.name]) {
+          this.logger.error(`Instance ${instance.name} not found in waMonitor.waInstances`);
+          this.logger.log(`Available instances in memory: ${Object.keys(this.waMonitor.waInstances).join(', ')}`);
           return {
             status: 'success',
           };
